@@ -62,7 +62,7 @@ bool isLetter(char c) {
 	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
 }
 
-const int MaxDepth = 10; // horrible hack to get around problem with recursive-descent parser on this particular grammar
+const int MaxDepth = 4; // horrible hack to get around problem with recursive-descent parser on this particular grammar
 							// I told you parsing was complicated! (And not worth worrying about for this assignment.)
 							// This parameter means that the parser will fail on "large" truth tables 
 							// but it will never go into an infinite loop
