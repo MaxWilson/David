@@ -87,6 +87,10 @@ ParseOutput ParseExpression(string input, int recursiveDepth); // forward declar
 
 ParseOutput ParseUnaryExpression(string input, int recursiveDepth) {
 	if (recursiveDepth > MaxDepth) throw ParseFailure();
+	if (match(input, "(")) {
+		auto result = ParseExpression(consume("(", input), recursiveDepth);
+		return pair<Expression, string>(result.first, consume(")", result.second));
+	}
 	auto result = ParseExpression(consume("!", input), recursiveDepth + 1);
 	return pair<Expression, string>(Expression(NOT, result.first), result.second);
 }
@@ -240,7 +244,7 @@ auto printTruthTable(Expression expr) {
 
 int main()
 {
-	auto expr = Parse("A /\\ B -> C"); // enter your own expression here
+	auto expr = Parse("(A /\\ B) -> C /\\ A"); // enter your own expression here
 	cout << render(expr) << endl;
 	printTruthTable(expr);
 }
