@@ -62,12 +62,13 @@ bool isLetter(char c) {
 	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
 }
 
-const int MaxDepth = 4; // horrible hack to get around problem with recursive-descent parser on this particular grammar
+const int MaxDepth = 10; // horrible hack to get around problem with recursive-descent parser on this particular grammar
 							// I told you parsing was complicated! (And not worth worrying about for this assignment.)
 							// This parameter means that the parser will fail on "large" truth tables 
 							// but it will never go into an infinite loop
 
-ParseOutput ParseVariable(string input) {
+ParseOutput ParseVariable(string input, int recursiveDepth) {
+	if (recursiveDepth > MaxDepth) throw ParseFailure();
 	input = consumeWhitespace(input);
 	auto variableName = string();
 	for (int i = 0; 0 < input.size(); ++i) {
@@ -85,11 +86,14 @@ ParseOutput ParseVariable(string input) {
 ParseOutput ParseExpression(string input, int recursiveDepth); // forward declaration so we can call it recursively
 
 ParseOutput ParseUnaryExpression(string input, int recursiveDepth) {
+	if (recursiveDepth > MaxDepth) throw ParseFailure();
 	auto result = ParseExpression(consume("!", input), recursiveDepth + 1);
 	return pair<Expression, string>(Expression(NOT, result.first), result.second);
 }
 
 ParseOutput ParseBinaryExpression(string input, int recursiveDepth) {
+	if (recursiveDepth > MaxDepth) throw ParseFailure();
+
 	auto lhs = ParseExpression(input, recursiveDepth + 1);
 	BinaryOperator op;
 	string remaining;
@@ -119,8 +123,6 @@ ParseOutput ParseBinaryExpression(string input, int recursiveDepth) {
 }
 
 ParseOutput ParseExpression(string input, int recursiveDepth) {
-	if (recursiveDepth > MaxDepth) throw ParseFailure();
-
 	try {
 		return ParseBinaryExpression(input, recursiveDepth + 1);
 	}
@@ -131,7 +133,7 @@ ParseOutput ParseExpression(string input, int recursiveDepth) {
 	}
 	catch (ParseFailure) {}
 	// try just plain variable, and if that fails then give up
-	return ParseVariable(input);
+	return ParseVariable(input, recursiveDepth + 1);
 }
 
 // recursive-descent parser
