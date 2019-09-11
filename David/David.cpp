@@ -67,8 +67,7 @@ const int MaxDepth = 10; // horrible hack to get around problem with recursive-d
 							// This parameter means that the parser will fail on "large" truth tables 
 							// but it will never go into an infinite loop
 
-ParseOutput ParseVariable(string input, int recursiveDepth) {
-	if (recursiveDepth > MaxDepth) throw ParseFailure();
+ParseOutput ParseVariable(string input) {
 	input = consumeWhitespace(input);
 	auto variableName = string();
 	for (int i = 0; 0 < input.size(); ++i) {
@@ -122,7 +121,7 @@ ParseOutput ParseBinaryExpression(string input, int recursiveDepth) {
 	}
 	// at this point we haven't thrown a ParseFailure, so the parse is valid so far. We try to get a second operand.
 
-	auto rhs = ParseExpression(remaining, recursiveDepth+1);
+	auto rhs = ParseExpression(remaining, 0); // reset recursiveDepth because we've advanced
 	return pair<Expression, string>(Expression(lhs.first, op, rhs.first), rhs.second);
 }
 
@@ -137,7 +136,7 @@ ParseOutput ParseExpression(string input, int recursiveDepth) {
 	}
 	catch (ParseFailure) {}
 	// try just plain variable, and if that fails then give up
-	return ParseVariable(input, recursiveDepth + 1);
+	return ParseVariable(input);
 }
 
 // recursive-descent parser
@@ -243,8 +242,9 @@ auto printTruthTable(Expression expr) {
 }
 
 int main()
-{
-	auto expr = Parse("(A /\\ B) -> C /\\ A"); // enter your own expression here
+{	
+	//auto expr = Parse("A /\\ B"); // enter your own expression here
+	auto expr = Parse("A /\\ B -> C /\\ A"); // enter your own expression here
 	cout << render(expr) << endl;
 	printTruthTable(expr);
 }
