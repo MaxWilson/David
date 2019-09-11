@@ -5,6 +5,8 @@
 #include <set>
 #include <map>
 #include <algorithm> // for std::for_each
+#include <iomanip> // for setw
+#include <functional>
 
 using namespace std;
 
@@ -48,27 +50,89 @@ string render(Expression expr) {
 		else if (expr.binaryOperator == IMPLIES)
 			return render(*expr.expression1) + " -> " + render(*expr.expression2);
 	}
-	else throw ImpossibleFailure();
+	throw ImpossibleFailure();
 }
 
-void extractVariablesHelper(Expression expr, set<string>& variables) {
+void extractVariables(Expression expr, set<string>& variables) {
 	if (expr.type == Variable) {
 		variables.insert(expr.variableName);
 	}
 	else if (expr.type == Unary && expr.unaryOperator == NOT) {
-		extractVariablesHelper(*expr.expression1, variables);
+		extractVariables(*expr.expression1, variables);
 	}
 	else if (expr.type == Binary) {
-		extractVariablesHelper(*expr.expression1, variables);
-		extractVariablesHelper(*expr.expression2, variables);
+		extractVariables(*expr.expression1, variables);
+		extractVariables(*expr.expression2, variables);
 	}
 	else throw ImpossibleFailure();
 }
 
 auto extractVariables(Expression expr) {
 	set<string> retval;
-	extractVariablesHelper(expr, retval);
+	extractVariables(expr, retval);
 	return retval;
+}
+
+auto generatePossibleAssignments(Expression expr) {
+	auto vars = extractVariables(expr);
+	auto accumulator = set<map<string, bool>>();
+	accumulator.insert(map<string, bool>());
+	while (!vars.empty()) {
+		auto currentVariable = *vars.begin();
+		vars.erase(currentVariable);		
+		// need to make sure everything in accumulator turns into two things in the accumulator
+		// I'm going to make a new variable 'fresh' and just copy stuff over, but there are easier ways
+		auto fresh = set<map<string, bool>>();
+		for (auto i = begin(accumulator); i != end(accumulator); ++i) {
+			auto assignment = *i;
+			auto withTrueValues = map<string, bool>();
+			withTrueValues.insert(begin(assignment), end(assignment));
+			withTrueValues.insert_or_assign(currentVariable, true);
+			auto withFalseValues = map<string, bool>(begin(assignment), end(assignment));
+			withFalseValues.insert(begin(assignment), end(assignment));
+			withFalseValues.insert_or_assign(currentVariable, false);
+			fresh.insert(withTrueValues);
+			fresh.insert(withFalseValues);
+		}
+		accumulator = fresh; // copy back from fresh.
+	}
+	return accumulator;
+}
+
+auto evaluate(Expression expr, map<string, bool> assignment) {
+	if (expr.type == Variable) return assignment[expr.variableName];
+	else if (expr.type == Unary && expr.unaryOperator == NOT) return !evaluate(*expr.expression1, assignment);
+	else if (expr.type == Binary) {
+		auto lhs = evaluate(*expr.expression1, assignment);
+		auto rhs = evaluate(*expr.expression2, assignment);
+		if (expr.binaryOperator == AND)
+			return lhs && rhs;
+		else if (expr.binaryOperator == OR)
+			return lhs || rhs;
+		else if (expr.binaryOperator == IMPLIES)
+			return (!lhs) || rhs;
+	}
+	throw ImpossibleFailure();
+}
+
+auto printTruthTable(Expression expr) {
+	auto assignments = generatePossibleAssignments(expr);
+	auto vars = extractVariables(expr);
+	// print column headers
+	for_each(begin(vars), end(vars), [](auto var) {
+		cout << setw(10) << var;
+		});
+	cout << setw(10) << "Result" << endl;
+
+	// print variable values and final value
+	for_each(begin(assignments), end(assignments), [&expr, &vars](auto assignment) {
+		// print column headers
+		for_each(begin(vars), end(vars), [&assignment](auto var) {
+			cout << setw(10) << assignment[var];
+			});
+		cout << setw(10) << evaluate(expr, assignment) << endl;
+
+		});
 }
 
 int main()
@@ -76,7 +140,8 @@ int main()
 	auto expression = Expression(Expression(Expression("A"), AND, Expression("B")), IMPLIES, Expression(NOT, Expression("A")));
 	cout << render(expression) << endl;
 	auto variables = extractVariables(expression);
-	for_each(begin(variables), end(variables), [](auto v) { cout << v << " ";  });
+	//for_each(begin(variables), end(variables), [](auto v) { cout << v << " ";  });
+	printTruthTable(expression);
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
